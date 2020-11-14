@@ -10,7 +10,7 @@ compile:
 formal:
 	qverify -c -od Output_Results -do "\
 		do qs_files/directives.tcl; \
-		formal compile -d IFStage -cuname my_bind_sva \
+		formal compile -d EXEStage -cuname my_bind_sva \
 			-target_cover_statements; \
 		formal verify -init qs_files/myinit.init \
 		-timeout 5m; \
