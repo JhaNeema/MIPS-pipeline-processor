@@ -10,7 +10,7 @@ compile:
 formal_cu:
 	qverify -c -od Output_Results -do "\
 		do qs_files/directives.tcl; \
-		formal compile -d controller -cuname my_bind_sva \
+		formal compile -d controller_verif -cuname my_bind_sva \
 			-target_cover_statements; \
 		formal verify -init qs_files/myinit.init \
 		-timeout 5m -auto_constraint_off; \

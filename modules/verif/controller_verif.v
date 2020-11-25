@@ -1,14 +1,15 @@
 `include "defines.v"
 
-module controller (opCode, branchEn, EXE_CMD, Branch_command, Is_Imm, ST_or_BNE, WB_EN, MEM_R_EN, MEM_W_EN, hazard_detected);
+module controller_verif (opCode, branchEn, EXE_CMD, Branch_command, Is_Imm, ST_or_BNE, WB_EN, MEM_R_EN, MEM_W_EN, hazard_detected, clk);
   input hazard_detected;
+  input clk;
   input [`OP_CODE_LEN-1:0] opCode;
   output reg branchEn;
   output reg [`EXE_CMD_LEN-1:0] EXE_CMD;
   output reg [1:0] Branch_command;
   output reg Is_Imm, ST_or_BNE, WB_EN, MEM_R_EN, MEM_W_EN;
 
-  always @ ( * ) begin
+  always @ ( posedge clk ) begin
     if (hazard_detected == 0) begin
       {branchEn, EXE_CMD, Branch_command, Is_Imm, ST_or_BNE, WB_EN, MEM_R_EN, MEM_W_EN} <= 0;
       case (opCode)
@@ -44,4 +45,4 @@ module controller (opCode, branchEn, EXE_CMD, Branch_command, Is_Imm, ST_or_BNE,
 	  MEM_W_EN <= 0;
     end
   end
-endmodule // controller
+endmodule // controller_verif
