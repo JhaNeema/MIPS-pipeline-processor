@@ -1,11 +1,22 @@
 
-run: clean compile formal_cu debug
+hdu: clean compile formal_hdu debug
+cu: clean compile formal_cu debug
+
 
 compile:
 	vlib work
 	vmap work work
 	vlog ./modules/*.v ./modules/*/*.v ./defines.v ./topLevelCircuit.v
 	vlog -sv -mfcu -cuname my_bind_sva ./sva_bind.sv ./assertions.sv
+
+formal_hdu:
+	qverify -c -od Output_Results -do "\
+		do qs_files/directives.tcl; \
+		formal compile -d hazard_detection -cuname my_bind_sva \
+			-target_cover_statements; \
+		formal verify \
+		-timeout 5m -auto_constraint_off; \
+		exit"
 
 formal_cu:
 	qverify -c -od Output_Results -do "\

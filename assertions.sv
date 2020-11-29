@@ -28,6 +28,47 @@ add_cover: cover property ( EXE_CMD inside {`EXE_ADD, `EXE_SUB, `EXE_AND, `EXE_O
 endmodule
 */
 
+module fpv_hazard(forward_EN, is_imm, ST_or_BNE, src1_ID, src2_ID, dest_EXE, WB_EN_EXE, dest_MEM, WB_EN_MEM, MEM_R_EN_EXE, branch_comm, hazard_detected);
+	input logic [`REG_FILE_ADDR_LEN-1:0] src1_ID, src2_ID;
+	input logic [`REG_FILE_ADDR_LEN-1:0] dest_EXE, dest_MEM;
+	input logic [1:0] branch_comm;
+	input logic forward_EN, WB_EN_EXE, WB_EN_MEM, is_imm, ST_or_BNE, MEM_R_EN_EXE;
+	input logic hazard_detected;
+	
+	logic clk;
+	
+	default clocking c0 @(posedge clk); endclocking;
+	
+	// Immediate assertions
+  
+	// Cover that hazard_detected can be asserted and deasserted
+
+	HDU_hazard_toggle: cover property( hazard_detected ##1 !hazard_detected ##1 hazard_detected);
+	
+	//let noRAW = ((src1_ID != dest_EXE) && (src1_ID != dest_MEM) && ((src2_ID != dest_EXE && ((~is_imm) || ST_or_BNE)) && ((src2_ID != dest_MEM) && ((~is_imm) || ST_or_BNE))));
+	
+	let RAW_src1_IDEXE = (src1_ID == dest_EXE) && WB_EN_EXE;
+	let RAW_src2valid_IDEXE = (src2_ID == dest_EXE) && ((~is_imm) || ST_or_BNE) && WB_EN_EXE;
+	
+	let RAW_src1_IDMEM = (src1_ID == dest_MEM) && WB_EN_MEM;
+	let RAW_src2valid_IDMEM = (src2_ID == dest_MEM) && ((~is_imm) || ST_or_BNE) && WB_EN_MEM;
+	
+	let RAW = RAW_src1_IDEXE || RAW_src2valid_IDEXE || RAW_src1_IDMEM || RAW_src2valid_IDMEM;
+	let noRAW = !(RAW_src1_IDEXE && RAW_src2valid_IDEXE && RAW_src1_IDMEM && RAW_src2valid_IDMEM);
+	
+	HDU_noRAW_RAW_noRAW: cover property (noRAW ##1 RAW ##1 noRAW);
+
+	// Assert that if RAW hazard exists between ID and EXE
+
+	HDU_no_forward: assume property(forward_EN == 0 );
+	HDU_src1_src2_not_same: assume property(src1_ID != src2_ID);
+
+	// src1 is the destination of EXE and will be written back in WB, then RAW hazard
+	assert property( (src1_ID == dest_EXE) && WB_EN_EXE |->  hazard_detected );
+	
+endmodule
+
+
 module fpv_controller(opCode, branchEn, EXE_CMD, Branch_command, Is_Imm, ST_or_BNE, WB_EN, MEM_R_EN, MEM_W_EN, hazard_detected, clk);
 
   input logic clk;
