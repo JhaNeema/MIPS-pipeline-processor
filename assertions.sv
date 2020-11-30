@@ -38,15 +38,8 @@ module fpv_hazard(forward_EN, is_imm, ST_or_BNE, src1_ID, src2_ID, dest_EXE, WB_
 	logic clk;
 	
 	default clocking c0 @(posedge clk); endclocking;
-	
-	// Immediate assertions
-  
-	// Cover that hazard_detected can be asserted and deasserted
-
-	HDU_hazard_toggle: cover property( hazard_detected ##1 !hazard_detected ##1 hazard_detected);
-	
-	//let noRAW = ((src1_ID != dest_EXE) && (src1_ID != dest_MEM) && ((src2_ID != dest_EXE && ((~is_imm) || ST_or_BNE)) && ((src2_ID != dest_MEM) && ((~is_imm) || ST_or_BNE))));
-	
+	  
+	// Booleans constructs
 	let RAW_src1_IDEXE = (src1_ID == dest_EXE) && WB_EN_EXE;
 	let RAW_src2valid_IDEXE = (src2_ID == dest_EXE) && ((~is_imm) || ST_or_BNE) && WB_EN_EXE;
 	
@@ -54,17 +47,42 @@ module fpv_hazard(forward_EN, is_imm, ST_or_BNE, src1_ID, src2_ID, dest_EXE, WB_
 	let RAW_src2valid_IDMEM = (src2_ID == dest_MEM) && ((~is_imm) || ST_or_BNE) && WB_EN_MEM;
 	
 	let RAW = RAW_src1_IDEXE || RAW_src2valid_IDEXE || RAW_src1_IDMEM || RAW_src2valid_IDMEM;
-	let noRAW = !(RAW_src1_IDEXE && RAW_src2valid_IDEXE && RAW_src1_IDMEM && RAW_src2valid_IDMEM);
+	let noRAW = !RAW_src1_IDEXE && !RAW_src2valid_IDEXE && !RAW_src1_IDMEM && !RAW_src2valid_IDMEM;
 	
+	// Cover different types of RAW hazard waveforms
+	HDU_noRAW_RAW_src1_IDEXE_noRAW: cover property (noRAW ##1 RAW_src1_IDEXE ##1 noRAW);
+	HDU_noRAW_RAW_src2valid_IDEXE_noRAW: cover property (noRAW ##1 RAW_src2valid_IDEXE ##1 noRAW);
+	HDU_noRAW_RAW_src1_IDMEM_noRAW: cover property (noRAW ##1 RAW_src1_IDMEM ##1 noRAW);
+	HDU_noRAW_RAW_src2valid_IDMEM_noRAW: cover property (noRAW ##1 RAW_src2valid_IDMEM ##1 noRAW);
+	  
+	// Cover that hazard_detected can be asserted and deasserted
+	HDU_hazard_toggle: cover property( hazard_detected ##1 !hazard_detected ##1 hazard_detected);
+	
+	// Cover RAW and noRAW waveforms
 	HDU_noRAW_RAW_noRAW: cover property (noRAW ##1 RAW ##1 noRAW);
 
-	// Assert that if RAW hazard exists between ID and EXE
-
+	// Assume no forwarding
 	HDU_no_forward: assume property(forward_EN == 0 );
+	
+	// Assume src1 and src2 are different registers
 	HDU_src1_src2_not_same: assume property(src1_ID != src2_ID);
 
-	// src1 is the destination of EXE and will be written back in WB, then RAW hazard
-	assert property( (src1_ID == dest_EXE) && WB_EN_EXE |->  hazard_detected );
+	// Assert that src1 in ID is the destination of EXE and will be written back in WB, then RAW hazard & hazard detected
+	HDU_src1_IDEXE_RAW: assert property( RAW_src1_IDEXE |->  hazard_detected );
+	// Assert that  src2 in ID is the destination of EXE and will be written back in WB, then RAW hazard & hazard detected
+	HDU_src2_IDEXE_RAW: assert property( RAW_src2valid_IDEXE |->  hazard_detected );
+	// Assert that  src1 in ID will be written back in MEM, then RAW hazard & hazard detected
+	HDU_src1_IDMEM_RAW: assert property( RAW_src1_IDMEM |->  hazard_detected );
+	// Assert that  src2 in ID will be written back in MEM, then RAW hazard & hazard detected
+	HDU_src2_IDMEM_RAW: assert property( RAW_src2valid_IDMEM |->  hazard_detected );
+	// Assert any RAW hazard will have hazard detected
+	HDU_RAW_assert: assert property( RAW |-> hazard_detected );
+	
+	// Assert that any other condition is not a RAW hazard
+	HDU_noRAW_assert: assert property( noRAW |-> !hazard_detected );
+	
+	// Assert that hazard detected is only triggered by a RAW hazard
+	HDU_hazard_triggered: assert property (hazard_detected |-> RAW);
 	
 endmodule
 
