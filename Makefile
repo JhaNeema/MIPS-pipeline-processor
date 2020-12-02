@@ -1,4 +1,6 @@
 
+exemem: clean compile formal_exe_mem debug
+exe: clean compile formal_exe debug
 hdu: clean compile formal_hdu debug
 cu: clean compile formal_cu debug
 
@@ -9,6 +11,24 @@ compile:
 	vlog ./modules/*.v ./modules/*/*.v ./defines.v ./topLevelCircuit.v
 	vlog -sv -mfcu -cuname my_bind_sva ./sva_bind.sv ./assertions.sv
 
+formal_exe_mem:
+	qverify -c -od Output_Results -do "\
+		do qs_files/directives.tcl; \
+		formal compile -d EXE_MEM_stages -cuname my_bind_sva \
+			-target_cover_statements; \
+		formal verify -init qs_files/myinit.init \
+		-timeout 5m -auto_constraint_off; \
+		exit"
+	
+formal_exe:
+	qverify -c -od Output_Results -do "\
+		do qs_files/directives.tcl; \
+		formal compile -d EXEStage -cuname my_bind_sva \
+			-target_cover_statements; \
+		formal verify -init qs_files/myinit.init \
+		-timeout 5m -auto_constraint_off; \
+		exit"
+		
 formal_hdu:
 	qverify -c -od Output_Results -do "\
 		do qs_files/directives.tcl; \

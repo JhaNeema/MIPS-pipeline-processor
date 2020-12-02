@@ -1,5 +1,108 @@
 `include "defines.v"
 
+
+module EXE_MEM_stages (clk, rst, EXE_CMD_EXE, val1_sel, val2_sel, ST_val_sel, val1_EXE, val2_EXE, WB_result, ST_value_EXE, PC_EXE, dest_EXE, MEM_R_EN_EXE, MEM_W_EN_EXE, WB_EN_EXE, PC_MEM, dataMem_out_MEM, dest_MEM, WB_EN_MEM);
+		
+	//wire [`WORD_LEN-1:0] PC_IF, PC_ID;
+	//wire [`WORD_LEN-1:0] inst_IF, inst_ID;
+	//wire [`WORD_LEN-1:0] reg1_ID, reg2_ID;
+	//wire [`WORD_LEN-1:0] val1_ID;
+	//wire [`WORD_LEN-1:0] val2_ID;
+	//wire [`WORD_LEN-1:0] ALURes_WB;
+	//wire [`WORD_LEN-1:0] dataMem_out_WB;
+	//wire [`REG_FILE_ADDR_LEN-1:0] dest_WB; // dest_ID = instruction[25:21] thus nothing declared
+	//wire [`REG_FILE_ADDR_LEN-1:0] src1_ID, src2_regFile_ID, src2_forw_ID, src2_forw_EXE, src1_forw_EXE;
+	//wire [`EXE_CMD_LEN-1:0] EXE_CMD_ID;
+	//wire [1:0] branch_comm;
+	//wire Br_Taken_ID, IF_Flush, Br_Taken_EXE;
+	//wire MEM_R_EN_ID, MEM_R_EN_WB;
+	//wire MEM_W_EN_ID;
+	//wire WB_EN_ID, WB_EN_WB;
+	//wire hazard_detected, is_imm, ST_or_BNE;
+	
+	input clk;
+	input rst;
+	input [`EXE_CMD_LEN-1:0] EXE_CMD_EXE;
+	input [`FORW_SEL_LEN-1:0] val1_sel;
+	input [`FORW_SEL_LEN-1:0] val2_sel;
+	input [`FORW_SEL_LEN-1:0] ST_val_sel;
+	input [`WORD_LEN-1:0] val1_EXE;
+	input [`WORD_LEN-1:0] val2_EXE;
+	input [`WORD_LEN-1:0] WB_result;
+	input [`WORD_LEN-1:0] ST_value_EXE;
+	input [`WORD_LEN-1:0] PC_EXE;
+	input [`REG_FILE_ADDR_LEN-1:0] dest_EXE;
+	input MEM_R_EN_EXE;
+	input MEM_W_EN_EXE;
+	input WB_EN_EXE;
+	
+	wire [`WORD_LEN-1:0] ALURes_MEM;
+	wire [`WORD_LEN-1:0] ALURes_EXE;
+	wire [`WORD_LEN-1:0] ST_value_EXE2MEM;
+	wire [`WORD_LEN-1:0] ST_value_MEM;
+	wire MEM_R_EN_MEM;
+	wire MEM_W_EN_MEM;
+	
+	output [`WORD_LEN-1:0] PC_MEM;
+	output [`WORD_LEN-1:0] dataMem_out_MEM;
+	output [`REG_FILE_ADDR_LEN-1:0] dest_MEM;
+	output WB_EN_MEM;
+	
+	EXEStage EXEStage (
+		// INPUTS
+		.clk(clk),
+		.EXE_CMD(EXE_CMD_EXE),
+		.val1_sel(val1_sel),
+		.val2_sel(val2_sel),
+		.ST_val_sel(ST_val_sel),
+		.val1(val1_EXE),
+		.val2(val2_EXE),
+		.ALU_res_MEM(ALURes_MEM),
+		.result_WB(WB_result),
+		.ST_value_in(ST_value_EXE),
+		// OUTPUTS
+		.ALUResult(ALURes_EXE),
+		.ST_value_out(ST_value_EXE2MEM)
+	);
+	
+	EXE2MEM EXE2MEMReg (
+		.clk(clk),
+		.rst(rst),
+		// INPUTS
+		.WB_EN_IN(WB_EN_EXE),
+		.MEM_R_EN_IN(MEM_R_EN_EXE),
+		.MEM_W_EN_IN(MEM_W_EN_EXE),
+		.PCIn(PC_EXE),
+		.ALUResIn(ALURes_EXE),
+		.STValIn(ST_value_EXE2MEM),
+		.destIn(dest_EXE),
+		// OUTPUTS
+		.WB_EN(WB_EN_MEM),
+		.MEM_R_EN(MEM_R_EN_MEM),
+		.MEM_W_EN(MEM_W_EN_MEM),
+		.PC(PC_MEM),
+		.ALURes(ALURes_MEM),
+		.STVal(ST_value_MEM),
+		.dest(dest_MEM)
+	);
+	
+	MEMStage MEMStage (
+		// INPUTS
+		.clk(clk),
+		.rst(rst),
+		.MEM_R_EN(MEM_R_EN_MEM),
+		.MEM_W_EN(MEM_W_EN_MEM),
+		.ALU_res(ALURes_MEM),
+		.ST_value(ST_value_MEM),
+		// OUTPUTS
+		.dataMem_out(dataMem_out_MEM)
+	);
+	
+	
+	
+endmodule
+
+/*
 module MIPS_Processor (input CLOCK_50, input rst, input forward_EN);
 	wire clock = CLOCK_50;
 	wire [`WORD_LEN-1:0] PC_IF, PC_ID, PC_EXE, PC_MEM;
@@ -229,3 +332,4 @@ module MIPS_Processor (input CLOCK_50, input rst, input forward_EN);
 
 	assign IF_Flush = Br_Taken_ID;
 endmodule
+*/
