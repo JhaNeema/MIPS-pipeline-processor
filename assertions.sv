@@ -57,6 +57,9 @@ module fpv_stages(clk, rst, forward_EN, hazard_detected, inst_ID, reg1_ID, reg2_
 		(inst_ID[31:26] == `OP_ST) |=> ((EXE_CMD_EXE == `EXE_ADD) && (val1_sel == 0) && (val2_sel == 0) && MEM_W_EN_EXE, alures = val1_EXE + val2_EXE) |-> ALURes_EXE == alures ##1 (ALURes_MEM == alures) && MEM_W_EN_MEM ;
 	endproperty
 	
+	
+	
+	
 	// Cover only arithmetic, logical, immediate and memory operations
 	op_and_cover: cover property ( opcode == `OP_AND);
 	op_add_cover: cover property ( opcode == `OP_ADD);
@@ -66,6 +69,9 @@ module fpv_stages(clk, rst, forward_EN, hazard_detected, inst_ID, reg1_ID, reg2_
 	
 	// Cover back to back operations
 	backtoback_cover: cover property ( opcode inside `FPV_TEST_OPS ##1 opcode inside `FPV_TEST_OPS ##1 opcode inside `FPV_TEST_OPS ##1 opcode inside `FPV_TEST_OPS );
+	
+	// Assume only operations which are being verified are input to the design
+	fpv_ops_assume: assume property ( opcode inside `FPV_TEST_OPS);
 	
 	// Assume that src1 and src2 are not the same
 	src1_src2_notsame_assume: assume property ( src1_ID != src2_regFile_ID );
@@ -175,15 +181,16 @@ module fpv_hazard(forward_EN, is_imm, ST_or_BNE, src1_ID, src2_ID, dest_EXE, WB_
 endmodule
 
 
-module fpv_controller(opCode, branchEn, EXE_CMD, Branch_command, Is_Imm, ST_or_BNE, WB_EN, MEM_R_EN, MEM_W_EN, hazard_detected, clk);
+module fpv_controller(opCode, branchEn, EXE_CMD, Branch_command, Is_Imm, ST_or_BNE, WB_EN, MEM_R_EN, MEM_W_EN, hazard_detected);
 
-	input logic clk;
 	input logic hazard_detected;
 	input logic [`OP_CODE_LEN-1:0] opCode;
 	input logic branchEn;
 	input logic [`EXE_CMD_LEN-1:0] EXE_CMD;
 	input logic [1:0] Branch_command;
 	input logic Is_Imm, ST_or_BNE, WB_EN, MEM_R_EN, MEM_W_EN;
+	
+	logic clk;
 
 	default clocking c0 @(posedge clk); endclocking;
 
@@ -201,43 +208,37 @@ module fpv_controller(opCode, branchEn, EXE_CMD, Branch_command, Is_Imm, ST_or_B
 	// Cover ADD with hazard detected
 	CU_cover_add_hazard_add: cover property ( (opCode == `OP_ADD && hazard_detected == 1'b0) ##1 (opCode == `OP_ADD && hazard_detected == 1'b1) ##1 (opCode == `OP_ADD && hazard_detected == 1'b0) );
 
-	// Cover hazard detection
-
-	//CU_cover_hazard_detected: cover property ( hazard_detected == 1'b1 );
-
-	// Assume only those operations which are under test
-
-	CU_assume_ops: assume property (opCode inside `FPV_TEST_OPS);
-
+	// Cover hazard detection can be detected
+	CU_cover_hazard_detected: cover property ( hazard_detected == 1'b1 );
 
 	// Assert arithemtic operations generating correct control signals
 
-	CU_add_assert: assert property ((opCode == `OP_ADD && hazard_detected == 1'b0) |=> (EXE_CMD == `EXE_ADD) && !Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
-	CU_sub_assert: assert property ((opCode == `OP_SUB && hazard_detected == 1'b0) |=> (EXE_CMD == `EXE_SUB) && !Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
-	CU_sla_assert: assert property ((opCode == `OP_SLA && hazard_detected == 1'b0) |=> (EXE_CMD == `EXE_SLA) && !Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
-	CU_sra_assert: assert property ((opCode == `OP_SRA && hazard_detected == 1'b0) |=> (EXE_CMD == `EXE_SRA) && !Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
+	CU_add_assert: assert property ((opCode == `OP_ADD && hazard_detected == 1'b0) |-> (EXE_CMD == `EXE_ADD) && !Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
+	CU_sub_assert: assert property ((opCode == `OP_SUB && hazard_detected == 1'b0) |-> (EXE_CMD == `EXE_SUB) && !Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
+	CU_sla_assert: assert property ((opCode == `OP_SLA && hazard_detected == 1'b0) |-> (EXE_CMD == `EXE_SLA) && !Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
+	CU_sra_assert: assert property ((opCode == `OP_SRA && hazard_detected == 1'b0) |-> (EXE_CMD == `EXE_SRA) && !Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
 
 	// Assert logical operations generating correct control signals
 
-	CU_and_assert: assert property ((opCode == `OP_AND && hazard_detected == 1'b0) |=> (EXE_CMD == `EXE_AND) && !Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
-	CU_or_assert: assert property ((opCode == `OP_OR && hazard_detected == 1'b0) |=> (EXE_CMD == `EXE_OR) && !Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
-	CU_nor_assert: assert property ((opCode == `OP_NOR && hazard_detected == 1'b0) |=> (EXE_CMD == `EXE_NOR) && !Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
-	CU_xor_assert: assert property ((opCode == `OP_XOR && hazard_detected == 1'b0) |=> (EXE_CMD == `EXE_XOR) && !Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
-	CU_sll_assert: assert property ((opCode == `OP_SLL && hazard_detected == 1'b0) |=> (EXE_CMD == `EXE_SLL) && !Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
-	CU_srl_assert: assert property ((opCode == `OP_SRL && hazard_detected == 1'b0) |=> (EXE_CMD == `EXE_SRL) && !Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
+	CU_and_assert: assert property ((opCode == `OP_AND && hazard_detected == 1'b0) |-> (EXE_CMD == `EXE_AND) && !Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
+	CU_or_assert: assert property ((opCode == `OP_OR && hazard_detected == 1'b0) |-> (EXE_CMD == `EXE_OR) && !Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
+	CU_nor_assert: assert property ((opCode == `OP_NOR && hazard_detected == 1'b0) |-> (EXE_CMD == `EXE_NOR) && !Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
+	CU_xor_assert: assert property ((opCode == `OP_XOR && hazard_detected == 1'b0) |-> (EXE_CMD == `EXE_XOR) && !Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
+	CU_sll_assert: assert property ((opCode == `OP_SLL && hazard_detected == 1'b0) |-> (EXE_CMD == `EXE_SLL) && !Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
+	CU_srl_assert: assert property ((opCode == `OP_SRL && hazard_detected == 1'b0) |-> (EXE_CMD == `EXE_SRL) && !Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
 
 	// Assert arithmetic immediate operations generating correct control signals
 
-	CU_addi_assert: assert property ((opCode == `OP_ADDI && hazard_detected == 1'b0) |=> (EXE_CMD == `EXE_ADD) && Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
-	CU_subi_assert: assert property ((opCode == `OP_SUBI && hazard_detected == 1'b0) |=> (EXE_CMD == `EXE_SUB) && Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
+	CU_addi_assert: assert property ((opCode == `OP_ADDI && hazard_detected == 1'b0) |-> (EXE_CMD == `EXE_ADD) && Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
+	CU_subi_assert: assert property ((opCode == `OP_SUBI && hazard_detected == 1'b0) |-> (EXE_CMD == `EXE_SUB) && Is_Imm && WB_EN && !MEM_R_EN && !MEM_W_EN);
 
 	// Assert memory operations generating correct control signals
 
-	CU_ld_assert: assert property ((opCode == `OP_LD && hazard_detected == 1'b0) |=> (EXE_CMD == `EXE_ADD) && Is_Imm && WB_EN && MEM_R_EN && !MEM_W_EN);
-	CU_st_assert: assert property ((opCode == `OP_ST && hazard_detected == 1'b0) |=> (EXE_CMD == `EXE_ADD) && Is_Imm && !WB_EN && !MEM_R_EN && MEM_W_EN);
+	CU_ld_assert: assert property ((opCode == `OP_LD && hazard_detected == 1'b0) |-> (EXE_CMD == `EXE_ADD) && Is_Imm && WB_EN && MEM_R_EN && !MEM_W_EN);
+	CU_st_assert: assert property ((opCode == `OP_ST && hazard_detected == 1'b0) |-> (EXE_CMD == `EXE_ADD) && Is_Imm && !WB_EN && !MEM_R_EN && MEM_W_EN);
 
 	// Assert that no writing can be done when hazard is detected
 
-	CU_hazard_detected: assert property ( ##1 (hazard_detected == 1'b1) |=> (EXE_CMD == `EXE_NO_OPERATION) && !WB_EN && !MEM_W_EN);
+	CU_hazard_detected: assert property ( ##1 (hazard_detected == 1'b1) |-> (EXE_CMD == `EXE_NO_OPERATION) && !WB_EN && !MEM_W_EN);
 
 endmodule
