@@ -12,10 +12,11 @@
 `define FPV_EXE_CMD {`EXE_ADD, `EXE_SUB, `EXE_AND, `EXE_OR, `EXE_NOR, `EXE_XOR, `EXE_SLA, `EXE_SLL, `EXE_SRA, `EXE_SRL, `EXE_NO_OPERATION}
 
 
-module fpv_exememstage(clk, rst, EXE_CMD_EXE, val1_sel, val2_sel, ST_val_sel, val1_EXE, val2_EXE, WB_result, ST_value_EXE, PC_EXE, dest_EXE, MEM_R_EN_EXE, MEM_W_EN_EXE, WB_EN_EXE, PC_MEM, dataMem_out_MEM, dest_MEM, WB_EN_MEM, ALURes_MEM, ALURes_EXE, ST_value_EXE2MEM, ST_value_MEM, MEM_R_EN_MEM, MEM_W_EN_MEM);
+module fpv_stages(clk, rst, hazard_detected, inst_ID, reg1_ID, reg2_ID, PC_ID, EXE_CMD_EXE, val1_sel, val2_sel, ST_val_sel, val1_EXE, val2_EXE, WB_result, ST_value_EXE, PC_EXE, dest_EXE, MEM_R_EN_EXE, MEM_W_EN_EXE, WB_EN_EXE, PC_MEM, dataMem_out_MEM, dest_MEM, WB_EN_MEM, WB_EN_WB, MEM_R_EN_WB, ALURes_WB, dataMem_out_WB, dest_WB, ALURes_MEM, ALURes_EXE, ST_value_EXE2MEM, ST_value_MEM, MEM_R_EN_MEM, MEM_W_EN_MEM, val1_ID, val2_ID, src1_ID, src2_regFile_ID, src2_forw_ID, EXE_CMD_ID, Br_Taken_ID, MEM_R_EN_ID, MEM_W_EN_ID, WB_EN_ID, branch_comm, PC_ID, src2_forw_EXE, src1_forw_EXE, Br_Taken_EXE, is_imm, ST_or_BNE);
 
 	input clk;
 	input rst;
+	input hazard_detected;
 	input [`EXE_CMD_LEN-1:0] EXE_CMD_EXE;
 	input [`FORW_SEL_LEN-1:0] val1_sel;
 	input [`FORW_SEL_LEN-1:0] val2_sel;
@@ -39,19 +40,46 @@ module fpv_exememstage(clk, rst, EXE_CMD_EXE, val1_sel, val2_sel, ST_val_sel, va
 	input [`WORD_LEN-1:0] dataMem_out_MEM;
 	input [`REG_FILE_ADDR_LEN-1:0] dest_MEM;
 	input WB_EN_MEM;
+	input WB_EN_WB;
+	input MEM_R_EN_WB;
+	input [`WORD_LEN-1:0] ALURes_WB;
+	input [`WORD_LEN-1:0] dataMem_out_WB;
+	input [`REG_FILE_ADDR_LEN-1:0] dest_WB; // dest_ID = instruction[25:21] thus nothing declared
+	input is_imm;
+	input ST_or_BNE;
+	input [`WORD_LEN-1:0] inst_ID;
+	input [`WORD_LEN-1:0] reg1_ID;
+	input [`WORD_LEN-1:0] reg2_ID;
+	input [`WORD_LEN-1:0] val1_ID;
+	input [`WORD_LEN-1:0] val2_ID;
+	input [`REG_FILE_ADDR_LEN-1:0] src1_ID;
+	input [`REG_FILE_ADDR_LEN-1:0] src2_regFile_ID;
+	input [`REG_FILE_ADDR_LEN-1:0] src2_forw_ID;
+	input [`EXE_CMD_LEN-1:0] EXE_CMD_ID;
+	input Br_Taken_ID;
+	input MEM_R_EN_ID;
+	input MEM_W_EN_ID;
+	input WB_EN_ID;
+	input [1:0] branch_comm;
+	input [`WORD_LEN-1:0] PC_ID;
+	input [`REG_FILE_ADDR_LEN-1:0] src2_forw_EXE;
+	input [`REG_FILE_ADDR_LEN-1:0] src1_forw_EXE;
+	input Br_Taken_EXE;
 	
 	default clocking c0 @(posedge clk); endclocking;
 	default disable iff (rst);
 	
-	property opexemem(opcode, opres);
+	property op_arithm_logical(opcode, opres);
 		logic [`WORD_LEN-1:0] alures; 
-		((EXE_CMD_EXE == opcode) && (val1_sel == 0) && (val2_sel == 0), alures = opres) |=> ALURes_MEM == alures;
+		((EXE_CMD_EXE == opcode) && (val1_sel == 0) && (val2_sel == 0) && !MEM_R_EN_EXE, alures = opres) |=> ALURes_MEM == alures ##1 WB_result == alures;
 	endproperty
 	
 	add_cover: cover property ( EXE_CMD_EXE inside `FPV_TEST_OPS);
 	
-	add_assert: assert property ( opexemem(`EXE_ADD, (val1_EXE + val2_EXE)) );
-	and_assert: assert property ( opexemem(`EXE_AND, (val1_EXE & val2_EXE))  );
+	src1_src2_notsame_assume: assume property ( src1_ID != src2_regFile_ID );
+	
+	add_assert: assert property ( op_arithm_logical(`EXE_ADD, (val1_EXE + val2_EXE)) );
+	and_assert: assert property ( op_arithm_logical(`EXE_AND, (val1_EXE & val2_EXE)) );
 
 endmodule
 

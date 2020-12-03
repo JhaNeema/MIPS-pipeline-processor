@@ -1,24 +1,11 @@
 `include "defines.v"
 
 
-module EXE_MEM_stages (clk, rst, EXE_CMD_EXE, val1_sel, val2_sel, ST_val_sel, val1_EXE, val2_EXE, WB_result, ST_value_EXE, PC_EXE, dest_EXE, MEM_R_EN_EXE, MEM_W_EN_EXE, WB_EN_EXE, PC_MEM, dataMem_out_MEM, dest_MEM, WB_EN_MEM);
+module MIPS_stages (clk, rst, hazard_detected, inst_ID, reg1_ID, reg2_ID, PC_ID, EXE_CMD_EXE, val1_sel, val2_sel, ST_val_sel, val1_EXE, val2_EXE, WB_result, ST_value_EXE, PC_EXE, dest_EXE, MEM_R_EN_EXE, MEM_W_EN_EXE, WB_EN_EXE, PC_MEM, dataMem_out_MEM, dest_MEM, WB_EN_MEM, WB_EN_WB, MEM_R_EN_WB, ALURes_WB, dataMem_out_WB, dest_WB);
 		
-	//wire [`WORD_LEN-1:0] PC_IF, PC_ID;
-	//wire [`WORD_LEN-1:0] inst_IF, inst_ID;
-	//wire [`WORD_LEN-1:0] reg1_ID, reg2_ID;
-	//wire [`WORD_LEN-1:0] val1_ID;
-	//wire [`WORD_LEN-1:0] val2_ID;
-	//wire [`WORD_LEN-1:0] ALURes_WB;
-	//wire [`WORD_LEN-1:0] dataMem_out_WB;
-	//wire [`REG_FILE_ADDR_LEN-1:0] dest_WB; // dest_ID = instruction[25:21] thus nothing declared
-	//wire [`REG_FILE_ADDR_LEN-1:0] src1_ID, src2_regFile_ID, src2_forw_ID, src2_forw_EXE, src1_forw_EXE;
-	//wire [`EXE_CMD_LEN-1:0] EXE_CMD_ID;
-	//wire [1:0] branch_comm;
-	//wire Br_Taken_ID, IF_Flush, Br_Taken_EXE;
-	//wire MEM_R_EN_ID, MEM_R_EN_WB;
-	//wire MEM_W_EN_ID;
-	//wire WB_EN_ID, WB_EN_WB;
-	//wire hazard_detected, is_imm, ST_or_BNE;
+	//wire [`WORD_LEN-1:0] PC_IF;
+	//wire [`WORD_LEN-1:0] inst_IF;
+	//wire IF_Flush;
 	
 	input clk;
 	input rst;
@@ -28,25 +15,105 @@ module EXE_MEM_stages (clk, rst, EXE_CMD_EXE, val1_sel, val2_sel, ST_val_sel, va
 	input [`FORW_SEL_LEN-1:0] ST_val_sel;
 	input [`WORD_LEN-1:0] val1_EXE;
 	input [`WORD_LEN-1:0] val2_EXE;
-	input [`WORD_LEN-1:0] WB_result;
 	input [`WORD_LEN-1:0] ST_value_EXE;
 	input [`WORD_LEN-1:0] PC_EXE;
 	input [`REG_FILE_ADDR_LEN-1:0] dest_EXE;
 	input MEM_R_EN_EXE;
 	input MEM_W_EN_EXE;
 	input WB_EN_EXE;
+	input hazard_detected;
+	input [`WORD_LEN-1:0] inst_ID;
+	input [`WORD_LEN-1:0] reg1_ID;
+	input [`WORD_LEN-1:0] reg2_ID;
+	input [`WORD_LEN-1:0] PC_ID;
 	
 	wire [`WORD_LEN-1:0] ALURes_MEM;
 	wire [`WORD_LEN-1:0] ALURes_EXE;
 	wire [`WORD_LEN-1:0] ST_value_EXE2MEM;
 	wire [`WORD_LEN-1:0] ST_value_MEM;
 	wire MEM_R_EN_MEM;
-	wire MEM_W_EN_MEM;
+	wire MEM_W_EN_MEM;	
+	wire is_imm, ST_or_BNE;
+	wire [`WORD_LEN-1:0] val1_ID;
+	wire [`WORD_LEN-1:0] val2_ID;
+	wire [`REG_FILE_ADDR_LEN-1:0] src1_ID;
+	wire [`REG_FILE_ADDR_LEN-1:0] src2_regFile_ID;
+	wire [`REG_FILE_ADDR_LEN-1:0] src2_forw_ID;
+	wire [`EXE_CMD_LEN-1:0] EXE_CMD_ID;
+	wire Br_Taken_ID;
+	wire MEM_R_EN_ID;
+	wire MEM_W_EN_ID;
+	wire WB_EN_ID;
+	wire [1:0] branch_comm;
+	wire [`REG_FILE_ADDR_LEN-1:0] src2_forw_EXE;
+	wire [`REG_FILE_ADDR_LEN-1:0] src1_forw_EXE;
+	wire Br_Taken_EXE;
 	
 	output [`WORD_LEN-1:0] PC_MEM;
 	output [`WORD_LEN-1:0] dataMem_out_MEM;
 	output [`REG_FILE_ADDR_LEN-1:0] dest_MEM;
 	output WB_EN_MEM;
+	output WB_EN_WB;
+	output MEM_R_EN_WB;
+	output [`WORD_LEN-1:0] ALURes_WB;
+	output [`WORD_LEN-1:0] dataMem_out_WB;
+	output [`REG_FILE_ADDR_LEN-1:0] dest_WB; // dest_ID = instruction[25:21] thus nothing declared
+	output [`WORD_LEN-1:0] WB_result;
+	
+	IDStage IDStage (
+		// INPUTS
+		.clk(clk),
+		.rst(rst),
+		.hazard_detected_in(hazard_detected),
+		.instruction(inst_ID),
+		.reg1(reg1_ID),
+		.reg2(reg2_ID),
+		// OUTPUTS
+		.src1(src1_ID),
+		.src2_reg_file(src2_regFile_ID),
+		.src2_forw(src2_forw_ID),
+		.val1(val1_ID),
+		.val2(val2_ID),
+		.brTaken(Br_Taken_ID),
+		.EXE_CMD(EXE_CMD_ID),
+		.MEM_R_EN(MEM_R_EN_ID),
+		.MEM_W_EN(MEM_W_EN_ID),
+		.WB_EN(WB_EN_ID),
+		.is_imm_out(is_imm),
+		.ST_or_BNE_out(ST_or_BNE),
+		.branch_comm(branch_comm)
+	);
+	
+	ID2EXE ID2EXEReg (
+		.clk(clk),
+		.rst(rst),
+		// INPUTS
+		.destIn(inst_ID[25:21]),
+		.src1_in(src1_ID),
+		.src2_in(src2_forw_ID),
+		.reg2In(reg2_ID),
+		.val1In(val1_ID),
+		.val2In(val2_ID),
+		.PCIn(PC_ID),
+		.EXE_CMD_IN(EXE_CMD_ID),
+		.MEM_R_EN_IN(MEM_R_EN_ID),
+		.MEM_W_EN_IN(MEM_W_EN_ID),
+		.WB_EN_IN(WB_EN_ID),
+		.brTaken_in(Br_Taken_ID),
+		// OUTPUTS
+		.src1_out(src1_forw_EXE),
+		.src2_out(src2_forw_EXE),
+		.dest(dest_EXE),
+		.ST_value(ST_value_EXE),
+		.val1(val1_EXE),
+		.val2(val2_EXE),
+		.PC(PC_EXE),
+		.EXE_CMD(EXE_CMD_EXE),
+		.MEM_R_EN(MEM_R_EN_EXE),
+		.MEM_W_EN(MEM_W_EN_EXE),
+		.WB_EN(WB_EN_EXE),
+		.brTaken_out(Br_Taken_EXE)
+	);
 	
 	EXEStage EXEStage (
 		// INPUTS
@@ -98,13 +165,39 @@ module EXE_MEM_stages (clk, rst, EXE_CMD_EXE, val1_sel, val2_sel, ST_val_sel, va
 		.dataMem_out(dataMem_out_MEM)
 	);
 	
+	MEM2WB MEM2WB(
+		.clk(clk),
+		.rst(rst),
+		// INPUTS
+		.WB_EN_IN(WB_EN_MEM),
+		.MEM_R_EN_IN(MEM_R_EN_MEM),
+		.ALUResIn(ALURes_MEM),
+		.memReadValIn(dataMem_out_MEM),
+		.destIn(dest_MEM),
+		// OUTPUTS
+		.WB_EN(WB_EN_WB),
+		.MEM_R_EN(MEM_R_EN_WB),
+		.ALURes(ALURes_WB),
+		.memReadVal(dataMem_out_WB),
+		.dest(dest_WB)
+	);
+	
+	WBStage WBStage (
+		// INPUTS
+		.MEM_R_EN(MEM_R_EN_WB),
+		.memData(dataMem_out_WB),
+		.aluRes(ALURes_WB),
+		// OUTPUTS
+		.WB_res(WB_result)
+	);
+	
 	
 	
 endmodule
 
 /*
-module MIPS_Processor (input CLOCK_50, input rst, input forward_EN);
-	wire clock = CLOCK_50;
+module MIPS_Processor (input clk_50, input rst, input forward_EN);
+	wire clk = clk_50;
 	wire [`WORD_LEN-1:0] PC_IF, PC_ID, PC_EXE, PC_MEM;
 	wire [`WORD_LEN-1:0] inst_IF, inst_ID;
 	wire [`WORD_LEN-1:0] reg1_ID, reg2_ID, ST_value_EXE, ST_value_EXE2MEM, ST_value_MEM;
@@ -126,7 +219,7 @@ module MIPS_Processor (input CLOCK_50, input rst, input forward_EN);
 
 	regFile regFile(
 		// INPUTS
-		.clk(clock),
+		.clk(clk),
 		.rst(rst),
 		.src1(src1_ID),
 		.src2(src2_regFile_ID),
@@ -173,7 +266,7 @@ module MIPS_Processor (input CLOCK_50, input rst, input forward_EN);
 	//###########################
 	IFStage IFStage (
 		// INPUTS
-		.clk(clock),
+		.clk(clk),
 		.rst(rst),
 		.freeze(hazard_detected),
 		.brTaken(Br_Taken_ID),
@@ -185,7 +278,7 @@ module MIPS_Processor (input CLOCK_50, input rst, input forward_EN);
 
 	IDStage IDStage (
 		// INPUTS
-		.clk(clock),
+		.clk(clk),
 		.rst(rst),
 		.hazard_detected_in(hazard_detected),
 		.instruction(inst_ID),
@@ -209,7 +302,7 @@ module MIPS_Processor (input CLOCK_50, input rst, input forward_EN);
 
 	EXEStage EXEStage (
 		// INPUTS
-		.clk(clock),
+		.clk(clk),
 		.EXE_CMD(EXE_CMD_EXE),
 		.val1_sel(val1_sel),
 		.val2_sel(val2_sel),
@@ -226,7 +319,7 @@ module MIPS_Processor (input CLOCK_50, input rst, input forward_EN);
 
 	MEMStage MEMStage (
 		// INPUTS
-		.clk(clock),
+		.clk(clk),
 		.rst(rst),
 		.MEM_R_EN(MEM_R_EN_MEM),
 		.MEM_W_EN(MEM_W_EN_MEM),
@@ -250,7 +343,7 @@ module MIPS_Processor (input CLOCK_50, input rst, input forward_EN);
 	//############################
 	IF2ID IF2IDReg (
 		// INPUTS
-		.clk(clock),
+		.clk(clk),
 		.rst(rst),
 		.flush(IF_Flush),
 		.freeze(hazard_detected),
@@ -262,7 +355,7 @@ module MIPS_Processor (input CLOCK_50, input rst, input forward_EN);
 	);
 
 	ID2EXE ID2EXEReg (
-		.clk(clock),
+		.clk(clk),
 		.rst(rst),
 		// INPUTS
 		.destIn(inst_ID[25:21]),
@@ -293,7 +386,7 @@ module MIPS_Processor (input CLOCK_50, input rst, input forward_EN);
 	);
 
 	EXE2MEM EXE2MEMReg (
-		.clk(clock),
+		.clk(clk),
 		.rst(rst),
 		// INPUTS
 		.WB_EN_IN(WB_EN_EXE),
@@ -314,7 +407,7 @@ module MIPS_Processor (input CLOCK_50, input rst, input forward_EN);
 	);
 
 	MEM2WB MEM2WB(
-		.clk(clock),
+		.clk(clk),
 		.rst(rst),
 		// INPUTS
 		.WB_EN_IN(WB_EN_MEM),

@@ -14,7 +14,7 @@ compile:
 formal_exe_mem:
 	qverify -c -od Output_Results -do "\
 		do qs_files/directives.tcl; \
-		formal compile -d EXE_MEM_stages -cuname my_bind_sva \
+		formal compile -d MIPS_stages -cuname my_bind_sva \
 			-target_cover_statements; \
 		formal verify -init qs_files/myinit.init \
 		-timeout 5m -auto_constraint_off; \
