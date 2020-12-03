@@ -1,5 +1,6 @@
 
-exemem: clean compile formal_exe_mem debug
+run: clean compile formal
+mips: clean compile formal debug
 exe: clean compile formal_exe debug
 hdu: clean compile formal_hdu debug
 cu: clean compile formal_cu debug
@@ -11,10 +12,10 @@ compile:
 	vlog ./modules/*.v ./modules/*/*.v ./defines.v ./topLevelCircuit.v
 	vlog -sv -mfcu -cuname my_bind_sva ./sva_bind.sv ./assertions.sv
 
-formal_exe_mem:
+formal:
 	qverify -c -od Output_Results -do "\
 		do qs_files/directives.tcl; \
-		formal compile -d MIPS_stages -cuname my_bind_sva \
+		formal compile -d MIPS_Processor -cuname my_bind_sva \
 			-target_cover_statements; \
 		formal verify -init qs_files/myinit.init \
 		-timeout 5m -auto_constraint_off; \

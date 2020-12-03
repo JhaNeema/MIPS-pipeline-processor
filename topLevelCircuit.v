@@ -1,11 +1,11 @@
 `include "defines.v"
 
 
-module MIPS_stages (clk, rst, hazard_detected, inst_ID, reg1_ID, reg2_ID, PC_ID, EXE_CMD_EXE, val1_sel, val2_sel, ST_val_sel, val1_EXE, val2_EXE, WB_result, ST_value_EXE, PC_EXE, dest_EXE, MEM_R_EN_EXE, MEM_W_EN_EXE, WB_EN_EXE, PC_MEM, dataMem_out_MEM, dest_MEM, WB_EN_MEM, WB_EN_WB, MEM_R_EN_WB, ALURes_WB, dataMem_out_WB, dest_WB);
+/*module MIPS_stages (clk, rst, forward_EN, hazard_detected, inst_ID, reg1_ID, reg2_ID, PC_ID, EXE_CMD_EXE, val1_sel, val2_sel, ST_val_sel, val1_EXE, val2_EXE, WB_result, ST_value_EXE, PC_EXE, dest_EXE, MEM_R_EN_EXE, MEM_W_EN_EXE, WB_EN_EXE, PC_MEM, dataMem_out_MEM, dest_MEM, WB_EN_MEM, WB_EN_WB, MEM_R_EN_WB, ALURes_WB, dataMem_out_WB, dest_WB);
 		
-	//wire [`WORD_LEN-1:0] PC_IF;
-	//wire [`WORD_LEN-1:0] inst_IF;
-	//wire IF_Flush;
+	wire [`WORD_LEN-1:0] PC_IF;
+	wire [`WORD_LEN-1:0] inst_IF;
+	wire IF_Flush;
 	
 	input clk;
 	input rst;
@@ -26,6 +26,7 @@ module MIPS_stages (clk, rst, hazard_detected, inst_ID, reg1_ID, reg2_ID, PC_ID,
 	input [`WORD_LEN-1:0] reg1_ID;
 	input [`WORD_LEN-1:0] reg2_ID;
 	input [`WORD_LEN-1:0] PC_ID;
+	input forward_EN;
 	
 	wire [`WORD_LEN-1:0] ALURes_MEM;
 	wire [`WORD_LEN-1:0] ALURes_EXE;
@@ -60,6 +61,32 @@ module MIPS_stages (clk, rst, hazard_detected, inst_ID, reg1_ID, reg2_ID, PC_ID,
 	output [`REG_FILE_ADDR_LEN-1:0] dest_WB; // dest_ID = instruction[25:21] thus nothing declared
 	output [`WORD_LEN-1:0] WB_result;
 	
+	IFStage IFStage (
+		// INPUTS
+		.clk(clk),
+		.rst(rst),
+		.freeze(hazard_detected),
+		.brTaken(Br_Taken_ID),
+		.brOffset(val2_ID),
+		// OUTPUTS
+		.instruction(inst_IF),
+		.PC(PC_IF)
+	);
+	
+	IF2ID IF2IDReg (
+		// INPUTS
+		.clk(clk),
+		.rst(rst),
+		.flush(IF_Flush),
+		.freeze(hazard_detected),
+		.PCIn(PC_IF),
+		.instructionIn(inst_IF),
+		// OUTPUTS
+		.PC(PC_ID),
+		.instruction(inst_ID)
+	);
+	
+	
 	IDStage IDStage (
 		// INPUTS
 		.clk(clk),
@@ -82,6 +109,50 @@ module MIPS_stages (clk, rst, hazard_detected, inst_ID, reg1_ID, reg2_ID, PC_ID,
 		.is_imm_out(is_imm),
 		.ST_or_BNE_out(ST_or_BNE),
 		.branch_comm(branch_comm)
+	);
+	
+	regFile regFile(
+		// INPUTS
+		.clk(clk),
+		.rst(rst),
+		.src1(src1_ID),
+		.src2(src2_regFile_ID),
+		.dest(dest_WB),
+		.writeVal(WB_result),
+		.writeEn(WB_EN_WB),
+		// OUTPUTS
+		.reg1(reg1_ID),
+		.reg2(reg2_ID)
+	);
+	
+	hazard_detection hazard (
+		// INPUTS
+		.forward_EN(forward_EN),
+		.is_imm(is_imm),
+		.ST_or_BNE(ST_or_BNE),
+		.src1_ID(src1_ID),
+		.src2_ID(src2_regFile_ID),
+		.dest_EXE(dest_EXE),
+		.dest_MEM(dest_MEM),
+		.WB_EN_EXE(WB_EN_EXE),
+		.WB_EN_MEM(WB_EN_MEM),
+		.MEM_R_EN_EXE(MEM_R_EN_EXE),
+		// OUTPUTS
+		.branch_comm(branch_comm),
+		.hazard_detected(hazard_detected)
+	);
+	
+	forwarding_EXE forwrding_EXE (
+		.src1_EXE(src1_forw_EXE),
+		.src2_EXE(src2_forw_EXE),
+		.ST_src_EXE(dest_EXE),
+		.dest_MEM(dest_MEM),
+		.dest_WB(dest_WB),
+		.WB_EN_MEM(WB_EN_MEM),
+		.WB_EN_WB(WB_EN_WB),
+		.val1_sel(val1_sel),
+		.val2_sel(val2_sel),
+		.ST_val_sel(ST_val_sel)
 	);
 	
 	ID2EXE ID2EXEReg (
@@ -191,13 +262,13 @@ module MIPS_stages (clk, rst, hazard_detected, inst_ID, reg1_ID, reg2_ID, PC_ID,
 		.WB_res(WB_result)
 	);
 	
+	assign IF_Flush = Br_Taken_ID;
 	
-	
-endmodule
+endmodule*/
 
-/*
-module MIPS_Processor (input clk_50, input rst, input forward_EN);
-	wire clk = clk_50;
+
+module MIPS_Processor (input clk, input rst, input forward_EN);
+	//wire clk = clk_50;
 	wire [`WORD_LEN-1:0] PC_IF, PC_ID, PC_EXE, PC_MEM;
 	wire [`WORD_LEN-1:0] inst_IF, inst_ID;
 	wire [`WORD_LEN-1:0] reg1_ID, reg2_ID, ST_value_EXE, ST_value_EXE2MEM, ST_value_MEM;
@@ -425,4 +496,4 @@ module MIPS_Processor (input clk_50, input rst, input forward_EN);
 
 	assign IF_Flush = Br_Taken_ID;
 endmodule
-*/
+

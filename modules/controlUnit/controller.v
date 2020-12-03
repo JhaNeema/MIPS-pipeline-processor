@@ -8,7 +8,7 @@ module controller (opCode, branchEn, EXE_CMD, Branch_command, Is_Imm, ST_or_BNE,
   output reg [1:0] Branch_command;
   output reg Is_Imm, ST_or_BNE, WB_EN, MEM_R_EN, MEM_W_EN;
   
-  reg clk;
+  wire clk;
 
   always @ ( * ) begin
     if (hazard_detected == 0) begin

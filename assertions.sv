@@ -12,74 +12,89 @@
 `define FPV_EXE_CMD {`EXE_ADD, `EXE_SUB, `EXE_AND, `EXE_OR, `EXE_NOR, `EXE_XOR, `EXE_SLA, `EXE_SLL, `EXE_SRA, `EXE_SRL, `EXE_NO_OPERATION}
 
 
-module fpv_stages(clk, rst, hazard_detected, inst_ID, reg1_ID, reg2_ID, PC_ID, EXE_CMD_EXE, val1_sel, val2_sel, ST_val_sel, val1_EXE, val2_EXE, WB_result, ST_value_EXE, PC_EXE, dest_EXE, MEM_R_EN_EXE, MEM_W_EN_EXE, WB_EN_EXE, PC_MEM, dataMem_out_MEM, dest_MEM, WB_EN_MEM, WB_EN_WB, MEM_R_EN_WB, ALURes_WB, dataMem_out_WB, dest_WB, ALURes_MEM, ALURes_EXE, ST_value_EXE2MEM, ST_value_MEM, MEM_R_EN_MEM, MEM_W_EN_MEM, val1_ID, val2_ID, src1_ID, src2_regFile_ID, src2_forw_ID, EXE_CMD_ID, Br_Taken_ID, MEM_R_EN_ID, MEM_W_EN_ID, WB_EN_ID, branch_comm, PC_ID, src2_forw_EXE, src1_forw_EXE, Br_Taken_EXE, is_imm, ST_or_BNE);
+module fpv_stages(clk, rst, forward_EN, hazard_detected, inst_ID, reg1_ID, reg2_ID, EXE_CMD_EXE, val1_sel, val2_sel, ST_val_sel, val1_EXE, val2_EXE, WB_result, ST_value_EXE, PC_EXE, dest_EXE, MEM_R_EN_EXE, MEM_W_EN_EXE, WB_EN_EXE, PC_MEM, dataMem_out_MEM, dest_MEM, WB_EN_MEM, WB_EN_WB, MEM_R_EN_WB, ALURes_WB, dataMem_out_WB, dest_WB, ALURes_MEM, ALURes_EXE, ST_value_EXE2MEM, ST_value_MEM, MEM_R_EN_MEM, MEM_W_EN_MEM, val1_ID, val2_ID, src1_ID, src2_regFile_ID, src2_forw_ID, EXE_CMD_ID, Br_Taken_ID, MEM_R_EN_ID, MEM_W_EN_ID, WB_EN_ID, branch_comm, PC_ID, src2_forw_EXE, src1_forw_EXE, Br_Taken_EXE, is_imm, ST_or_BNE, PC_IF, inst_IF, IF_Flush);
 
 	input clk;
 	input rst;
-	input hazard_detected;
-	input [`EXE_CMD_LEN-1:0] EXE_CMD_EXE;
-	input [`FORW_SEL_LEN-1:0] val1_sel;
-	input [`FORW_SEL_LEN-1:0] val2_sel;
-	input [`FORW_SEL_LEN-1:0] ST_val_sel;
-	input [`WORD_LEN-1:0] val1_EXE;
-	input [`WORD_LEN-1:0] val2_EXE;
+	input forward_EN;
+	
+	input [`WORD_LEN-1:0] PC_IF, PC_ID, PC_EXE, PC_MEM;
+	input [`WORD_LEN-1:0] inst_IF, inst_ID;
+	input [`WORD_LEN-1:0] reg1_ID, reg2_ID, ST_value_EXE, ST_value_EXE2MEM, ST_value_MEM;
+	input [`WORD_LEN-1:0] val1_ID, val1_EXE;
+	input [`WORD_LEN-1:0] val2_ID, val2_EXE;
+	input [`WORD_LEN-1:0] ALURes_EXE, ALURes_MEM, ALURes_WB;
+	input [`WORD_LEN-1:0] dataMem_out_MEM, dataMem_out_WB;
 	input [`WORD_LEN-1:0] WB_result;
-	input [`WORD_LEN-1:0] ST_value_EXE;
-	input [`WORD_LEN-1:0] PC_EXE;
-	input [`REG_FILE_ADDR_LEN-1:0] dest_EXE;
-	input MEM_R_EN_EXE;
-	input MEM_W_EN_EXE;
-	input WB_EN_EXE;
-	input [`WORD_LEN-1:0] ALURes_MEM;
-	input [`WORD_LEN-1:0] ALURes_EXE;
-	input [`WORD_LEN-1:0] ST_value_EXE2MEM;
-	input [`WORD_LEN-1:0] ST_value_MEM;
-	input MEM_R_EN_MEM;
-	input MEM_W_EN_MEM;
-	input [`WORD_LEN-1:0] PC_MEM;
-	input [`WORD_LEN-1:0] dataMem_out_MEM;
-	input [`REG_FILE_ADDR_LEN-1:0] dest_MEM;
-	input WB_EN_MEM;
-	input WB_EN_WB;
-	input MEM_R_EN_WB;
-	input [`WORD_LEN-1:0] ALURes_WB;
-	input [`WORD_LEN-1:0] dataMem_out_WB;
-	input [`REG_FILE_ADDR_LEN-1:0] dest_WB; // dest_ID = instruction[25:21] thus nothing declared
-	input is_imm;
-	input ST_or_BNE;
-	input [`WORD_LEN-1:0] inst_ID;
-	input [`WORD_LEN-1:0] reg1_ID;
-	input [`WORD_LEN-1:0] reg2_ID;
-	input [`WORD_LEN-1:0] val1_ID;
-	input [`WORD_LEN-1:0] val2_ID;
-	input [`REG_FILE_ADDR_LEN-1:0] src1_ID;
-	input [`REG_FILE_ADDR_LEN-1:0] src2_regFile_ID;
-	input [`REG_FILE_ADDR_LEN-1:0] src2_forw_ID;
-	input [`EXE_CMD_LEN-1:0] EXE_CMD_ID;
-	input Br_Taken_ID;
-	input MEM_R_EN_ID;
-	input MEM_W_EN_ID;
-	input WB_EN_ID;
+	input [`REG_FILE_ADDR_LEN-1:0] dest_EXE, dest_MEM, dest_WB; // dest_ID = instruction[25:21] thus nothing declared
+	input [`REG_FILE_ADDR_LEN-1:0] src1_ID, src2_regFile_ID, src2_forw_ID, src2_forw_EXE, src1_forw_EXE;
+	input [`EXE_CMD_LEN-1:0] EXE_CMD_ID, EXE_CMD_EXE;
+	input [`FORW_SEL_LEN-1:0] val1_sel, val2_sel, ST_val_sel;
 	input [1:0] branch_comm;
-	input [`WORD_LEN-1:0] PC_ID;
-	input [`REG_FILE_ADDR_LEN-1:0] src2_forw_EXE;
-	input [`REG_FILE_ADDR_LEN-1:0] src1_forw_EXE;
-	input Br_Taken_EXE;
+	input Br_Taken_ID, IF_Flush, Br_Taken_EXE;
+	input MEM_R_EN_ID, MEM_R_EN_EXE, MEM_R_EN_MEM, MEM_R_EN_WB;
+	input MEM_W_EN_ID, MEM_W_EN_EXE, MEM_W_EN_MEM;
+	input WB_EN_ID, WB_EN_EXE, WB_EN_MEM, WB_EN_WB;
+	input hazard_detected, is_imm, ST_or_BNE;
+	
+	logic [`OP_CODE_LEN-1:0] opcode = inst_ID[31:26];
 	
 	default clocking c0 @(posedge clk); endclocking;
 	default disable iff (rst);
 	
-	property op_arithm_logical(opcode, opres);
+	property op_arith_logical(op_code, exe_code, opres);
 		logic [`WORD_LEN-1:0] alures; 
-		((EXE_CMD_EXE == opcode) && (val1_sel == 0) && (val2_sel == 0) && !MEM_R_EN_EXE, alures = opres) |=> ALURes_MEM == alures ##1 WB_result == alures;
+		(inst_ID[31:26] == op_code) |=> ((EXE_CMD_EXE == exe_code) && (val1_sel == 0) && (val2_sel == 0) && !MEM_R_EN_EXE, alures = opres) |-> ALURes_EXE == alures ##1 ALURes_MEM == alures ##1 ((WB_result == alures) && WB_EN_WB );
 	endproperty
 	
-	add_cover: cover property ( EXE_CMD_EXE inside `FPV_TEST_OPS);
+	property op_mem_ld;
+		logic [`WORD_LEN-1:0] alures; 
+		(inst_ID[31:26] == `OP_LD) |=> ((EXE_CMD_EXE == `EXE_ADD) && (val1_sel == 0) && (val2_sel == 0) && MEM_R_EN_EXE, alures = val1_EXE + val2_EXE) |-> ALURes_EXE == alures ##1 (ALURes_MEM == alures) && MEM_R_EN_MEM ##1 ((WB_result == dataMem_out_WB) && WB_EN_WB ) ;
+	endproperty
 	
+	property op_mem_st;
+		logic [`WORD_LEN-1:0] alures; 
+		(inst_ID[31:26] == `OP_ST) |=> ((EXE_CMD_EXE == `EXE_ADD) && (val1_sel == 0) && (val2_sel == 0) && MEM_W_EN_EXE, alures = val1_EXE + val2_EXE) |-> ALURes_EXE == alures ##1 (ALURes_MEM == alures) && MEM_W_EN_MEM ;
+	endproperty
+	
+	// Cover only arithmetic, logical, immediate and memory operations
+	op_and_cover: cover property ( opcode == `OP_AND);
+	op_add_cover: cover property ( opcode == `OP_ADD);
+	op_addi_cover: cover property ( opcode == `OP_ADDI);
+	op_ld_cover: cover property ( opcode == `OP_LD);
+	op_st_cover: cover property ( opcode == `OP_ST);
+	
+	// Cover back to back operations
+	backtoback_cover: cover property ( opcode inside `FPV_TEST_OPS ##1 opcode inside `FPV_TEST_OPS ##1 opcode inside `FPV_TEST_OPS ##1 opcode inside `FPV_TEST_OPS );
+	
+	// Assume that src1 and src2 are not the same
 	src1_src2_notsame_assume: assume property ( src1_ID != src2_regFile_ID );
 	
-	add_assert: assert property ( op_arithm_logical(`EXE_ADD, (val1_EXE + val2_EXE)) );
-	and_assert: assert property ( op_arithm_logical(`EXE_AND, (val1_EXE & val2_EXE)) );
+	// Assume no forwarding
+	nofwd_assume: assume property ( forward_EN == 0 );
+	//nohaz_assume: assume property ( hazard_detected == 0 );
+	
+	// Assert arithmetic operations give appropriate results: ADD, SUB
+	add_assert: assert property ( op_arith_logical(`OP_ADD, `EXE_ADD, (val1_EXE + val2_EXE)) );
+	sub_assert: assert property ( op_arith_logical(`OP_SUB, `EXE_SUB, (val1_EXE - val2_EXE)) );
+	sla_assert: assert property ( op_arith_logical(`OP_SLA, `EXE_SLA, (val1_EXE << val2_EXE)) );
+	sra_assert: assert property ( op_arith_logical(`OP_SRA, `EXE_SRA, (val1_EXE >> val2_EXE)) );
+	
+	// Assert arithmetic immediate operations give appropriate results: ADDI, SUBI
+	addi_assert: assert property ( op_arith_logical(`OP_ADDI, `EXE_ADD, (val1_EXE + val2_EXE)) );
+	subi_assert: assert property ( op_arith_logical(`OP_SUBI, `EXE_SUB, (val1_EXE - val2_EXE)) );
+	
+	// Assert logical operations give appropriate results: AND, OR, XOR
+	and_assert: assert property ( op_arith_logical(`OP_AND, `EXE_AND, (val1_EXE & val2_EXE)) );
+	or_assert: assert property ( op_arith_logical(`OP_OR, `EXE_OR, (val1_EXE | val2_EXE)) );
+	xor_assert: assert property ( op_arith_logical(`OP_XOR, `EXE_XOR, (val1_EXE ^ val2_EXE)) );
+	nor_assert: assert property ( op_arith_logical(`OP_NOR, `EXE_NOR, ~(val1_EXE | val2_EXE)) );
+	sll_assert: assert property ( op_arith_logical(`OP_SLL, `EXE_SLL, val1_EXE <<< val2_EXE) );
+	srl_assert: assert property ( op_arith_logical(`OP_SRL, `EXE_SRL, val1_EXE >>> val2_EXE) );
+	
+	// Assert memory operations
+	ld_assert: assert property ( op_mem_ld );
+	st_assert: assert property ( op_mem_st );
 
 endmodule
 

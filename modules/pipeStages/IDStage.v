@@ -17,8 +17,8 @@ module IDStage (clk, rst, hazard_detected_in, is_imm_out, ST_or_BNE_out, instruc
   controller controller(
     // INPUT
     .opCode(instruction[31:26]),
+	// OUTPUT
     .branchEn(CU2and),
-    // OUTPUT
     .EXE_CMD(EXE_CMD),
     .Branch_command(CU2Cond),
     .Is_Imm(Is_Imm),
@@ -26,6 +26,7 @@ module IDStage (clk, rst, hazard_detected_in, is_imm_out, ST_or_BNE_out, instruc
     .WB_EN(WB_EN),
     .MEM_R_EN(MEM_R_EN),
     .MEM_W_EN(MEM_W_EN),
+	// INPUT
     .hazard_detected(hazard_detected_in)
   );
 
