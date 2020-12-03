@@ -14,14 +14,15 @@ module IDStage (clk, rst, hazard_detected_in, is_imm_out, ST_or_BNE_out, instruc
   wire Is_Imm, ST_or_BNE;
   wire [`WORD_LEN-1:0] signExt2Mux;
 
-  controller controller(
+  controller_non_combo controller(
     // INPUT
     .opCode(instruction[31:26]),
 	// OUTPUT
     .branchEn(CU2and),
     .EXE_CMD(EXE_CMD),
     .Branch_command(CU2Cond),
-    .Is_Imm(Is_Imm),
+    //.Is_Imm(Is_Imm),
+    .Is_Imm(is_imm_out),
     .ST_or_BNE(ST_or_BNE),
     .WB_EN(WB_EN),
     .MEM_R_EN(MEM_R_EN),
@@ -40,14 +41,16 @@ module IDStage (clk, rst, hazard_detected_in, is_imm_out, ST_or_BNE_out, instruc
   mux #(.LENGTH(`WORD_LEN)) mux_val2 ( // determins whether val2 is from the reg file or the immediate value
     .in1(reg2),
     .in2(signExt2Mux),
-    .sel(Is_Imm),
+    //.sel(Is_Imm),
+    .sel(is_imm_out),
     .out(val2)
   );
 
   mux #(.LENGTH(`REG_FILE_ADDR_LEN)) mux_src2_forw ( // determins the value of register source 2 for forwarding
     .in1(instruction[15:11]), // src2 = instruction[15:11]
     .in2(5'd0),
-    .sel(Is_Imm),
+    //.sel(Is_Imm),
+    .sel(is_imm_out),
     .out(src2_forw)
   );
 
@@ -66,7 +69,7 @@ module IDStage (clk, rst, hazard_detected_in, is_imm_out, ST_or_BNE_out, instruc
   assign brTaken = CU2and && Cond2and;
   assign val1 = reg1;
   assign src1 = instruction[20:16];
-  assign is_imm_out = Is_Imm;
+  //assign is_imm_out = Is_Imm;
   assign ST_or_BNE_out = ST_or_BNE;
   assign branch_comm = CU2Cond;
 endmodule // IDStage
