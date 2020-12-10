@@ -29,8 +29,8 @@ module fpv_stages(
 	input WB_EN_ID, WB_EN_EXE, WB_EN_MEM, WB_EN_WB,
 	input hazard_detected, is_imm, ST_or_BNE
 );
-	// Opcode from the instruction
-	// opcode = inst_ID[31:26];
+	// Opcode from the instruction to allow easier viewing in waveform
+	logic [5:0] opcode = inst_ID[31:26];
 	
 	default clocking c0 @(posedge clk); endclocking;
 	default disable iff (rst);
@@ -57,15 +57,30 @@ module fpv_stages(
 	
 	// --- COVERS --- //
 	
-	// Cover only arithmetic, logical, immediate and memory operations
-	op_and_cover: cover property ( inst_ID[31:26] == `OP_AND);
-	op_add_cover: cover property ( inst_ID[31:26] == `OP_ADD);
-	op_addi_cover: cover property ( inst_ID[31:26] == `OP_ADDI);
-	op_ld_cover: cover property ( inst_ID[31:26] == `OP_LD);
-	op_st_cover: cover property ( inst_ID[31:26] == `OP_ST);
+	// Cover waveforms for single arithmetic, logical, immediate and memory operation
+	// Cover AND operation
+	op_and_true_cover: cover property ( inst_ID[31:26] == `OP_AND && (val1_ID == 1 && val2_ID == 1) && (hazard_detected == 0) );
+	op_and_false_cover: cover property ( inst_ID[31:26] == `OP_AND && (val1_ID == 0 && val2_ID == 1) && (hazard_detected == 0) );
 	
-	// Cover back to back operations
-	backtoback_cover: cover property ( inst_ID[31:26] inside `FPV_TEST_OPS ##1 inst_ID[31:26] inside `FPV_TEST_OPS ##1 inst_ID[31:26] inside `FPV_TEST_OPS ##1 inst_ID[31:26] inside `FPV_TEST_OPS );
+	// Cover ADD operation
+	op_add_cover: cover property ( inst_ID[31:26] == `OP_ADD && (val1_ID == 1 && val2_ID == 2) && (hazard_detected == 0) );
+	// Cover SUB operation
+	op_sub_cover: cover property ( inst_ID[31:26] == `OP_SUB && (val1_ID == 9 && val2_ID == 2) && (hazard_detected == 0) );
+	// Cover SLA operation
+	op_sla_cover: cover property ( inst_ID[31:26] == `OP_SLA && (val1_ID == 9 && val2_ID == 1) && (hazard_detected == 0) );
+	// Cover SRA operation
+	op_sra_cover: cover property ( inst_ID[31:26] == `OP_SRA && (val1_ID == 9 && val2_ID == 1) && (hazard_detected == 0) );
+	
+	
+	// Cover ADDI operation
+	op_addi_cover: cover property ( inst_ID[31:26] == `OP_ADDI && (val1_ID == 5 && val2_ID == 6) && (hazard_detected == 0) );
+	// Cover LD operation
+	op_ld_cover: cover property ( inst_ID[31:26] == `OP_LD && (val1_ID == 4 && val2_ID != 3) && (hazard_detected == 0) );
+	// Cover ST operation
+	op_st_cover: cover property ( inst_ID[31:26] == `OP_ST && (val1_ID == 5 && val2_ID == 4) && (hazard_detected == 0) );
+	
+	// Cover back to back operations (ADD, ADDI, AND, LD & ST)
+	backtoback_cover: cover property ( ( inst_ID[31:26] == `OP_ADD && (val1_ID == 1 && val2_ID == 2) && (hazard_detected == 0) ) ##1 ( inst_ID[31:26] == `OP_ADDI && (val1_ID == 5 && val2_ID == 6) && (hazard_detected == 0) ) ##1 ( inst_ID[31:26] == `OP_AND && (val1_ID == 1 && val2_ID == 1) && (hazard_detected == 0) ) ##1 ( inst_ID[31:26] == `OP_LD && (val1_ID == 4 && val2_ID != 3) && (hazard_detected == 0) ) ##1 ( inst_ID[31:26] == `OP_ST && (val1_ID == 5 && val2_ID == 4) && (hazard_detected == 0) ) );
 	
 	// --- ASSUMPTIONS --- //
 	
@@ -255,6 +270,9 @@ module fpv_controller(
 	// Cover ADD then ADDI operations to look at the waveforms
 	CU_cover_add: cover property (opCode == `OP_ADD && hazard_detected == 1'b0);
 	CU_cover_addi: cover property (opCode == `OP_ADDI && hazard_detected == 1'b0);
+	CU_cover_ld: cover property (opCode == `OP_LD && hazard_detected == 1'b0);
+	CU_cover_st: cover property (opCode == `OP_ST && hazard_detected == 1'b0);
+	CU_cover_and: cover property (opCode == `OP_AND && hazard_detected == 1'b0);
 
 	// Cover ADD, ADDI, AND, LD & ST back to back to look at waveforms
 	CU_cover_add_addi_and_ld_st: cover property (opCode == `OP_ADD && hazard_detected == 1'b0 ##1 opCode == `OP_ADDI && hazard_detected == 1'b0 ##1 opCode == `OP_AND && hazard_detected == 1'b0 ##1 opCode == `OP_LD && hazard_detected == 1'b0 ##1 opCode == `OP_ST && hazard_detected == 1'b0 );
