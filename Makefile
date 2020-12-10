@@ -1,9 +1,9 @@
 help:
 	@echo "targets: clean compile formal debug"
-	@echo -e "\t clean = cleans project files"
-	@echo -e "\t compile = cleans project files, compiles model & FPV"
-	@echo -e "\t formal = cleans project files, compiles model & FPV, displays FPV results in command line"
-	@echo -e "\t debug = cleans project files, compiles model & FPV, displays FPV results in command line, and runs debug session in GUI"
+	@echo -e "\t clean \t\t cleans project files"
+	@echo -e "\t compile \t cleans project files, compiles model & FPV"
+	@echo -e "\t formal \t cleans project files, compiles model & FPV, displays FPV results in command line"
+	@echo -e "\t debug \t\t cleans project files, compiles model & FPV, displays FPV results in command line, and runs debug session in GUI"
 
 compile: clean
 	@echo "Creating project..."

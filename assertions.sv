@@ -80,7 +80,7 @@ module fpv_stages(
 	
 	// --- ASSERTIONS --- //
 	
-	// Liveness for operations which do register write, memory read or memroy write. Write happens only when no RAW hazards.
+	// Liveness for operations which do register write, memory read or memory write. Write happens only when no RAW hazards.
 	WB_liveness: assert property ( (inst_ID[31:26] inside `FPV_WB_OPS) && !hazard_detected |=> s_eventually(WB_EN_WB) );
 	MEMR_liveness: assert property ( inst_ID[31:26] == `OP_LD |=> s_eventually(MEM_R_EN_MEM) );
 	MEMW_liveness: assert property ( inst_ID[31:26] == `OP_ST && !hazard_detected |=> s_eventually(MEM_W_EN_MEM) );
