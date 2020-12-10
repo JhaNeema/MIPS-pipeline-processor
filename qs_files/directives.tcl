@@ -13,6 +13,4 @@ netlist blackbox instructionMem
 # cutpoints
 netlist cutpoint IDStage.src1
 netlist cutpoint IDStage.src2_reg_file
-netlist cutpoint IDStage.val1
-netlist cutpoint IDStage.val2
 netlist cutpoint IF2IDReg.instruction
