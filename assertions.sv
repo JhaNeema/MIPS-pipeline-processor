@@ -1,6 +1,7 @@
 `include "defines.v"
 
 `define FPV_TEST_OPS {`OP_ADD, `OP_SUB, `OP_SLA, `OP_SRA, `OP_ADDI, `OP_SUBI, `OP_AND, `OP_OR, `OP_NOR, `OP_XOR, `OP_SLL, `OP_SRL, `OP_LD, `OP_ST}
+`define FPV_WB_OPS {`OP_ADD, `OP_SUB, `OP_SLA, `OP_SRA, `OP_ADDI, `OP_SUBI, `OP_AND, `OP_OR, `OP_NOR, `OP_XOR, `OP_SLL, `OP_SRL, `OP_LD}
 `define FPV_EXE_CMD {`EXE_ADD, `EXE_SUB, `EXE_AND, `EXE_OR, `EXE_NOR, `EXE_XOR, `EXE_SLA, `EXE_SLL, `EXE_SRA, `EXE_SRL, `EXE_NO_OPERATION}
 
 module fpv_stages(
@@ -26,8 +27,8 @@ module fpv_stages(
 	input WB_EN_ID, WB_EN_EXE, WB_EN_MEM, WB_EN_WB,
 	input hazard_detected, is_imm, ST_or_BNE
 );
-	// Get the opcode from the instruction
-	logic [`OP_CODE_LEN-1:0] opcode = inst_ID[31:26];
+	// Opcode from the instruction
+	// opcode = inst_ID[31:26];
 	
 	default clocking c0 @(posedge clk); endclocking;
 	default disable iff (rst);
@@ -55,19 +56,19 @@ module fpv_stages(
 	// --- COVERS --- //
 	
 	// Cover only arithmetic, logical, immediate and memory operations
-	op_and_cover: cover property ( opcode == `OP_AND);
-	op_add_cover: cover property ( opcode == `OP_ADD);
-	op_addi_cover: cover property ( opcode == `OP_ADDI);
-	op_ld_cover: cover property ( opcode == `OP_LD);
-	op_st_cover: cover property ( opcode == `OP_ST);
+	op_and_cover: cover property ( inst_ID[31:26] == `OP_AND);
+	op_add_cover: cover property ( inst_ID[31:26] == `OP_ADD);
+	op_addi_cover: cover property ( inst_ID[31:26] == `OP_ADDI);
+	op_ld_cover: cover property ( inst_ID[31:26] == `OP_LD);
+	op_st_cover: cover property ( inst_ID[31:26] == `OP_ST);
 	
 	// Cover back to back operations
-	backtoback_cover: cover property ( opcode inside `FPV_TEST_OPS ##1 opcode inside `FPV_TEST_OPS ##1 opcode inside `FPV_TEST_OPS ##1 opcode inside `FPV_TEST_OPS );
+	backtoback_cover: cover property ( inst_ID[31:26] inside `FPV_TEST_OPS ##1 inst_ID[31:26] inside `FPV_TEST_OPS ##1 inst_ID[31:26] inside `FPV_TEST_OPS ##1 inst_ID[31:26] inside `FPV_TEST_OPS );
 	
 	// --- ASSUMPTIONS --- //
 	
 	// Assume only operations which are being verified are input to the design
-	fpv_ops_assume: assume property ( opcode inside `FPV_TEST_OPS);
+	fpv_ops_assume: assume property ( inst_ID[31:26] inside `FPV_TEST_OPS);
 	
 	// Assume that cutpoints src1 and src2 are not the same
 	src1_src2_notsame_assume: assume property ( src1_ID != src2_regFile_ID );
@@ -76,6 +77,12 @@ module fpv_stages(
 	nofwd_assume: assume property ( forward_EN == 0 );
 	
 	// --- ASSERTIONS --- //
+	
+	// Liveness for operations which do register write, memory read or memroy write. Write happens only when no RAW hazards.
+	WB_liveness: assert property ( (inst_ID[31:26] inside `FPV_WB_OPS) && !hazard_detected |=> s_eventually(WB_EN_WB) );
+	MEMR_liveness: assert property ( inst_ID[31:26] == `OP_LD |=> s_eventually(MEM_R_EN_MEM) );
+	MEMW_liveness: assert property ( inst_ID[31:26] == `OP_ST && !hazard_detected |=> s_eventually(MEM_W_EN_MEM) );
+	
 	
 	// Assert arithmetic operations give appropriate results: ADD, SUB
 	add_assert: assert property ( op_arith_logical(`OP_ADD, `EXE_ADD, (val1_EXE + val2_EXE)) );
@@ -98,6 +105,9 @@ module fpv_stages(
 	// Assert memory operations
 	ld_assert: assert property ( op_mem_ld );
 	st_assert: assert property ( op_mem_st );
+	
+	
+	
 
 endmodule //fpv_stages
 
@@ -272,7 +282,9 @@ module fpv_controller(
 	CU_ld_assert: assert property ((opCode == `OP_LD && hazard_detected == 1'b0) |-> (EXE_CMD == `EXE_ADD) && Is_Imm && WB_EN && MEM_R_EN && !MEM_W_EN);
 	CU_st_assert: assert property ((opCode == `OP_ST && hazard_detected == 1'b0) |-> (EXE_CMD == `EXE_ADD) && Is_Imm && !WB_EN && !MEM_R_EN && MEM_W_EN);
 
-	// Assert that no writing can be done when hazard is detected
-	CU_hazard_detected: assert property ( ##1 (hazard_detected == 1'b1) |-> (EXE_CMD == `EXE_NO_OPERATION) && !WB_EN && !MEM_W_EN);
+	// Assert that no writing can be done when hazard is detected (with property simplification)
+	CU_hazard_detected_p1: assert property ( ##1 (hazard_detected == 1'b1) |-> (EXE_CMD == `EXE_NO_OPERATION));
+	CU_hazard_detected_p2: assert property ( ##1 (hazard_detected == 1'b1) |-> !WB_EN);
+	CU_hazard_detected_p3: assert property ( ##1 (hazard_detected == 1'b1) |-> !MEM_W_EN);
 
 endmodule //fpv_controller
